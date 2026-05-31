@@ -4,10 +4,12 @@ const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth');
 const listRoutes = require('./routes/lists');
 const adminRoutes = require('./routes/admin');
+const { ensureCsrfCookie, verifyCsrf } = require('./csrf');
 
 /**
  * Builds and configures the Express application. Kept separate from server
@@ -44,6 +46,25 @@ function createApp() {
 
   app.use(express.json({ limit: '256kb' }));
   app.use(cookieParser());
+  app.use(ensureCsrfCookie);
+
+  // A broad rate limit protecting every endpoint (the auth routes add a second,
+  // stricter limiter on top). Disabled under test to keep the suite fast.
+  if (process.env.NODE_ENV !== 'test') {
+    app.use(
+      '/api',
+      rateLimit({
+        windowMs: 60 * 1000,
+        max: 300,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { error: 'Too many requests. Please slow down.' },
+      })
+    );
+  }
+
+  // Reject forged state-changing requests for the whole API surface.
+  app.use('/api', verifyCsrf);
 
   // API routes
   app.use('/api/auth', authRoutes);

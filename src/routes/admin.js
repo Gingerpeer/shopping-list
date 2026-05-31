@@ -24,15 +24,15 @@ const countAdmins = db.prepare(
   "SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND status = 'approved'"
 );
 
-function publicUser(u) {
+function publicUser(user) {
   return {
-    id: u.id,
-    phone: u.phone,
-    displayName: u.display_name,
-    role: u.role,
-    status: u.status,
-    createdAt: u.created_at,
-    updatedAt: u.updated_at,
+    id: user.id,
+    phone: user.phone,
+    displayName: user.display_name,
+    role: user.role,
+    status: user.status,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
   };
 }
 

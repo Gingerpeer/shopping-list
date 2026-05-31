@@ -32,20 +32,40 @@ test.after(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-/** Minimal cookie-aware request helper. */
+/** Minimal cookie-aware request helper with CSRF double-submit support. */
 function makeClient() {
-  let cookie = null;
+  const cookies = {};
+  const cookieHeader = () =>
+    Object.entries(cookies)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('; ');
   return async function request(method, p, body) {
+    // Obtain a CSRF cookie before the first state-changing request, mirroring a
+    // browser that received it when loading the page.
+    if (!cookies.csrf_token && !['GET', 'HEAD'].includes(method)) {
+      await request('GET', '/api/health');
+    }
+    const headers = {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    };
+    if (Object.keys(cookies).length) headers.Cookie = cookieHeader();
+    if (cookies.csrf_token && !['GET', 'HEAD'].includes(method)) {
+      headers['X-CSRF-Token'] = cookies.csrf_token;
+    }
     const res = await fetch(base + p, {
       method,
-      headers: {
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(cookie ? { Cookie: cookie } : {}),
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
-    const setCookie = res.headers.get('set-cookie');
-    if (setCookie) cookie = setCookie.split(';')[0];
+    const setCookies =
+      typeof res.headers.getSetCookie === 'function'
+        ? res.headers.getSetCookie()
+        : [res.headers.get('set-cookie')].filter(Boolean);
+    for (const sc of setCookies) {
+      const [pair] = sc.split(';');
+      const idx = pair.indexOf('=');
+      cookies[pair.slice(0, idx)] = pair.slice(idx + 1);
+    }
     let data = null;
     try {
       data = await res.json();
@@ -159,6 +179,16 @@ test('users cannot see lists that are not theirs', async () => {
   assert.equal(lists.status, 200);
   assert.equal(lists.data.lists.length, 1);
   assert.equal(lists.data.lists[0].title, 'Groceries');
+});
+
+test('state-changing requests without a CSRF token are rejected', async () => {
+  // A raw request that supplies no CSRF cookie/header must be blocked.
+  const res = await fetch(base + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: '+14155550100', password: 'adminpass1' }),
+  });
+  assert.equal(res.status, 403);
 });
 
 test('collaboration: owner shares a list and collaborator gains access', async () => {

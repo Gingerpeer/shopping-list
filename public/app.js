@@ -43,10 +43,23 @@ const state = {
 
 // ---- API helper ----------------------------------------------------------
 
+function readCookie(name) {
+  const match = document.cookie.match(
+    new RegExp('(?:^|; )' + name + '=([^;]*)')
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function api(method, path, body) {
+  const headers = body ? { 'Content-Type': 'application/json' } : {};
+  // Include the CSRF token for state-changing requests (double-submit pattern).
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+    const token = readCookie('csrf_token');
+    if (token) headers['X-CSRF-Token'] = token;
+  }
   const res = await fetch(path, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    headers,
     body: body ? JSON.stringify(body) : undefined,
     credentials: 'same-origin',
   });

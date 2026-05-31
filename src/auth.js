@@ -27,7 +27,7 @@ function issueToken(user) {
 
 /**
  * Reads the token from the HttpOnly cookie (preferred) or, as a fallback, from
- * an `Authorization: ****** header. Returns the decoded user record
+ * the standard Authorization HTTP header. Returns the decoded user record
  * or null.
  */
 function userFromRequest(req) {

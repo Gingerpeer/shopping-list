@@ -34,7 +34,7 @@ const insertUser = db.prepare(
    VALUES (@phone, @display_name, @password_hash, @role, @status)`
 );
 const findByPhone = db.prepare('SELECT * FROM users WHERE phone = ?');
-const countUsers = db.prepare('SELECT COUNT(*) AS n FROM users');
+const countUsers = db.prepare('SELECT COUNT(*) AS count FROM users');
 
 function publicUser(user) {
   return {
@@ -73,7 +73,7 @@ router.post('/register', authLimiter, async (req, res, next) => {
         .json({ error: 'An account with this phone number already exists.' });
     }
 
-    const isFirstUser = countUsers.get().n === 0;
+    const isFirstUser = countUsers.get().count === 0;
     const adminPhoneSet = config.adminPhone !== '';
     const matchesAdminPhone =
       adminPhoneSet && normalizePhone(config.adminPhone) === phone;
