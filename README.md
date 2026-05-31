@@ -5,7 +5,7 @@ colourful, checkable shopping lists, sign in securely from anywhere with their
 phone number, and collaborate by simply sharing a list with another person's
 phone number. Access to the app is gated by an administrator approval workflow.
 
-![Keepish stack](https://img.shields.io/badge/stack-Node.js%20%7C%20Express%20%7C%20SQLite-informational)
+![Keepish stack](https://img.shields.io/badge/stack-Node.js%20%7C%20Express%20%7C%20PostgreSQL-informational)
 
 ## Features
 
@@ -40,6 +40,7 @@ phone number. Access to the app is gated by an administrator approval workflow.
 ### Prerequisites
 
 - Node.js 18+ (developed against Node 24)
+- A PostgreSQL 14+ database (local install, Docker, or a managed service)
 
 ### Install & run
 
@@ -48,6 +49,10 @@ npm install
 cp .env.example .env        # then edit values (see below)
 npm start                   # http://localhost:3000
 ```
+
+`npm start` connects to the database in `DATABASE_URL` and creates the schema on
+first boot. The fastest way to get a database is the bundled Docker stack (see
+[Running with Docker](#running-with-docker)).
 
 For local development with auto-reload:
 
@@ -62,7 +67,8 @@ npm run dev
 | `PORT`           | HTTP port (default `3000`).                                        |
 | `JWT_SECRET`     | Secret used to sign session tokens. **Required in production.**    |
 | `JWT_EXPIRES_IN` | Session lifetime (default `7d`).                                   |
-| `DB_PATH`        | SQLite file location (default `./data/shopping.db`).               |
+| `DATABASE_URL`   | PostgreSQL connection string. **Required in production.**          |
+| `DATABASE_SSL`   | Set `true` to require TLS for the DB connection (default `false`). |
 | `ADMIN_PHONE`    | Optional. Restricts which phone bootstraps the first admin account.|
 | `NODE_ENV`       | Set to `production` to enable secure cookies and strict secrets.   |
 
@@ -85,9 +91,18 @@ from the **Admin** tab.
 npm test
 ```
 
-The suite (`test/api.test.js`) runs the full HTTP API against an isolated
-temporary database and covers registration, the approval workflow, role
-enforcement, per-user data isolation, and collaboration.
+The suite (`test/api.test.js`) runs the full HTTP API against a PostgreSQL
+database and covers registration, the approval workflow, role enforcement,
+per-user data isolation, and collaboration.
+
+The tests need a reachable PostgreSQL instance. Point them at one with
+`DATABASE_URL` (or `TEST_DATABASE_URL`); they reset their own tables on start:
+
+```bash
+# e.g. using the docker-compose database service
+docker compose up -d db
+TEST_DATABASE_URL=******localhost:5432/shopping npm test
+```
 
 ## API overview
 
@@ -116,7 +131,7 @@ src/
   app.js          Express app wiring + security middleware
   server.js       Start-up entry point
   config.js       Validated environment configuration
-  db.js           SQLite connection + schema
+  db.js           PostgreSQL pool, schema, and query helpers
   auth.js         JWT issuing, cookies, auth/role middleware
   validators.js   Phone & password validation/normalisation
   routes/
@@ -131,15 +146,57 @@ test/
   api.test.js     End-to-end API tests
 ```
 
-## Deploying anywhere
+## Running with Docker
 
-Because the app is a single Node process serving both the API and the static
-frontend, it runs on any container or Node host. For production:
+A `docker-compose.yml` brings up the app together with a **separate** PostgreSQL
+service, mirroring the production topology (a Node service + a managed database):
 
-1. Set `NODE_ENV=production` and a strong `JWT_SECRET`.
-2. Terminate TLS in front of the app (a reverse proxy / platform load balancer);
-   `Secure` cookies require HTTPS.
-3. Persist the `DB_PATH` SQLite file on a durable volume.
+```bash
+docker compose up --build      # http://localhost:3000
+```
+
+The compose file wires the app to the database via `DATABASE_URL`. Set a real
+`JWT_SECRET` (and optionally `ADMIN_PHONE`) in your environment before running it
+for anything beyond local experimentation:
+
+```bash
+JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))") \
+  docker compose up --build
+```
+
+To build and run only the application image (against your own database):
+
+```bash
+docker build -t keepish .
+docker run --rm -p 3000:3000 \
+  -e DATABASE_URL=******host:5432/dbname \
+  -e JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))") \
+  keepish
+```
+
+## Deploying to Railway
+
+The app is a single Node process serving both the API and the static frontend,
+and it stores all state in PostgreSQL — so it deploys cleanly to Railway.
+
+1. **Create the database.** In your Railway project, add a **PostgreSQL** service
+   (New → Database → Add PostgreSQL). Railway exposes its connection string as the
+   `DATABASE_URL` variable on that service.
+2. **Create the app service.** Add a service from this repository. Railway detects
+   the `Dockerfile` (and `railway.json`) and builds the container automatically.
+3. **Set variables** on the app service:
+   - `DATABASE_URL` → reference the database, e.g. `${{ Postgres.DATABASE_URL }}`.
+   - `JWT_SECRET` → a long random value (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`).
+   - `NODE_ENV` → `production`.
+   - `ADMIN_PHONE` → optional, to lock down the bootstrap admin account.
+   - Railway injects `PORT` automatically; the app reads it.
+4. **Deploy.** On boot the app creates its schema, and the
+   `/api/health` endpoint (configured in `railway.json`) is used for health checks.
+   Because TLS is terminated by Railway's edge, the `Secure` session cookies work
+   over the provided HTTPS domain.
+
+> If you connect to a Postgres endpoint that requires TLS (for example a public
+> proxy rather than Railway's private network), set `DATABASE_SSL=true`.
 
 ## License
 
