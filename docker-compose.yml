@@ -1,0 +1,47 @@
+# Local development stack: the app plus a *separate* PostgreSQL database,
+# mirroring the production topology on Railway (a Node service + a managed
+# Postgres service connected via DATABASE_URL).
+#
+#   docker compose up --build
+#
+# The app is then available on http://localhost:3000
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shopping
+    ports:
+      # Exposed for convenience (e.g. running `npm test` against it locally).
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shopping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: "production"
+      PORT: "3000"
+      # The app connects to the dedicated database service over the compose network.
+      DATABASE_URL: "******db:5432/shopping"
+      # Override these for anything beyond local experimentation.
+      JWT_SECRET: "${JWT_SECRET:-change-me-in-production}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-7d}"
+      ADMIN_PHONE: "${ADMIN_PHONE:-}"
+    ports:
+      - "3000:3000"
+
+volumes:
+  db-data:

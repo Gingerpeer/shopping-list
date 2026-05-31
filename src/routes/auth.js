@@ -29,13 +29,6 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts. Please try again later.' },
 });
 
-const insertUser = db.prepare(
-  `INSERT INTO users (phone, display_name, password_hash, role, status)
-   VALUES (@phone, @display_name, @password_hash, @role, @status)`
-);
-const findByPhone = db.prepare('SELECT * FROM users WHERE phone = ?');
-const countUsers = db.prepare('SELECT COUNT(*) AS count FROM users');
-
 function publicUser(user) {
   return {
     id: user.id,
@@ -67,13 +60,14 @@ router.post('/register', authLimiter, async (req, res, next) => {
 
     const displayName = cleanText(req.body.displayName, 80);
 
-    if (findByPhone.get(phone)) {
+    if (await db.get('SELECT 1 FROM users WHERE phone = $1', [phone])) {
       return res
         .status(409)
         .json({ error: 'An account with this phone number already exists.' });
     }
 
-    const isFirstUser = countUsers.get().count === 0;
+    const { count } = await db.get('SELECT COUNT(*)::int AS count FROM users');
+    const isFirstUser = count === 0;
     const adminPhoneSet = config.adminPhone !== '';
     const matchesAdminPhone =
       adminPhoneSet && normalizePhone(config.adminPhone) === phone;
@@ -84,17 +78,18 @@ router.post('/register', authLimiter, async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(req.body.password, config.bcryptRounds);
 
-    const info = insertUser.run({
-      phone,
-      display_name: displayName,
-      password_hash: passwordHash,
-      role: isBootstrapAdmin ? 'admin' : 'user',
-      status: isBootstrapAdmin ? 'approved' : 'pending',
-    });
-
-    const user = db
-      .prepare('SELECT * FROM users WHERE id = ?')
-      .get(info.lastInsertRowid);
+    const user = await db.get(
+      `INSERT INTO users (phone, display_name, password_hash, role, status)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [
+        phone,
+        displayName,
+        passwordHash,
+        isBootstrapAdmin ? 'admin' : 'user',
+        isBootstrapAdmin ? 'approved' : 'pending',
+      ]
+    );
 
     // Only hand out a session immediately when the account is usable.
     if (user.status === 'approved') {
@@ -132,7 +127,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
       return invalid();
     }
 
-    const user = findByPhone.get(phone);
+    const user = await db.get('SELECT * FROM users WHERE phone = $1', [phone]);
     if (!user) {
       // Still run a hash comparison to keep timing roughly constant.
       await bcrypt.compare(password, '$2a$12$' + 'x'.repeat(53));

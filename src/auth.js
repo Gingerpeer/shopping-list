@@ -9,9 +9,11 @@ const db = require('./db');
  * Authentication & authorisation helpers and Express middleware.
  */
 
-const findUserById = db.prepare(
-  'SELECT id, phone, display_name, role, status FROM users WHERE id = ?'
-);
+const findUserById = (id) =>
+  db.get(
+    'SELECT id, phone, display_name, role, status FROM users WHERE id = $1',
+    [id]
+  );
 
 /**
  * Issues a signed session token for a user. We deliberately keep the payload
@@ -30,7 +32,7 @@ function issueToken(user) {
  * the standard Authorization HTTP header. Returns the decoded user record
  * or null.
  */
-function userFromRequest(req) {
+async function userFromRequest(req) {
   let token = req.cookies ? req.cookies[config.cookieName] : null;
 
   if (!token) {
@@ -44,7 +46,7 @@ function userFromRequest(req) {
 
   try {
     const payload = jwt.verify(token, config.jwtSecret);
-    const user = findUserById.get(payload.sub);
+    const user = await findUserById(payload.sub);
     return user || null;
   } catch (err) {
     return null;
@@ -52,13 +54,17 @@ function userFromRequest(req) {
 }
 
 /** Requires a valid session. Attaches `req.user`. */
-function requireAuth(req, res, next) {
-  const user = userFromRequest(req);
-  if (!user) {
-    return res.status(401).json({ error: 'Authentication required.' });
+async function requireAuth(req, res, next) {
+  try {
+    const user = await userFromRequest(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    next(err);
   }
-  req.user = user;
-  next();
 }
 
 /** Requires a valid session AND an approved account. */

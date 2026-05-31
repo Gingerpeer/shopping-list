@@ -31,12 +31,33 @@ if (!jwtSecret) {
   );
 }
 
+// PostgreSQL connection string. Railway (and most managed Postgres providers)
+// expose this as DATABASE_URL. A local default keeps `npm start` working out of
+// the box against a developer's local Postgres / docker-compose service.
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  '******localhost:5432/shopping';
+
+if (!process.env.DATABASE_URL && isProduction) {
+  throw new Error(
+    'DATABASE_URL must be set in production. Refusing to start without a database connection string.'
+  );
+}
+
+// Enable TLS for the database connection when talking to a provider that
+// requires it (e.g. a public Postgres proxy). Internal Railway networking does
+// not need this, so it defaults to off.
+const databaseSsl =
+  process.env.DATABASE_SSL === 'true' ||
+  /[?&]sslmode=require/.test(databaseUrl);
+
 const config = {
   isProduction,
   port: Number.parseInt(process.env.PORT, 10) || 3000,
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  dbPath: process.env.DB_PATH || './data/shopping.db',
+  databaseUrl,
+  databaseSsl,
   adminPhone: (process.env.ADMIN_PHONE || '').trim(),
   cookieName: 'sl_token',
   bcryptRounds: 12,
