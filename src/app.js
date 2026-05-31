@@ -48,11 +48,11 @@ function createApp() {
   app.use(cookieParser());
   app.use(ensureCsrfCookie);
 
-  // A broad rate limit protecting every endpoint (the auth routes add a second,
-  // stricter limiter on top). Disabled under test to keep the suite fast.
+  // A broad rate limit protecting every endpoint, including the static frontend
+  // and SPA fallback (the auth routes add a second, stricter limiter on top).
+  // Disabled under test to keep the suite fast.
   if (process.env.NODE_ENV !== 'test') {
     app.use(
-      '/api',
       rateLimit({
         windowMs: 60 * 1000,
         max: 300,
