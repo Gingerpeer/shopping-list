@@ -2,22 +2,28 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 
 // Configure an isolated database + secret BEFORE the app modules load.
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'keepish-test-'));
-process.env.DB_PATH = path.join(tmpDir, 'test.db');
+process.env.DATABASE_URL =
+  process.env.TEST_DATABASE_URL ||
+  process.env.DATABASE_URL ||
+  '******localhost:5432/shopping_test';
 process.env.JWT_SECRET = 'test-secret-value';
 process.env.NODE_ENV = 'test';
 
 const createApp = require('../src/app');
+const db = require('../src/db');
 
 let server;
 let base;
 
 test.before(async () => {
+  // Start from a clean schema so the suite's sequential expectations hold.
+  await db.query(
+    'DROP TABLE IF EXISTS list_shares, list_items, lists, users CASCADE'
+  );
+  await db.init();
+
   const app = createApp();
   await new Promise((resolve) => {
     server = app.listen(0, () => {
@@ -27,9 +33,9 @@ test.before(async () => {
   });
 });
 
-test.after(() => {
+test.after(async () => {
   if (server) server.close();
-  fs.rmSync(tmpDir, { recursive: true, force: true });
+  await db.close();
 });
 
 /** Minimal cookie-aware request helper with CSRF double-submit support. */
