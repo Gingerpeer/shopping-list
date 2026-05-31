@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Keepish — Shopping Lists</title>
+    <meta
+      name="description"
+      content="A simple, secure, Google Keep inspired shopping list app."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%92%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!-- ===== Auth screen ===== -->
+    <main id="auth-screen" class="auth-screen" hidden>
+      <section class="auth-card">
+        <div class="auth-brand">
+          <span class="logo">🛒</span>
+          <h1>Keepish</h1>
+        </div>
+        <p class="auth-tagline">Your shopping lists, everywhere.</p>
+
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab is-active" data-tab="login">
+            Sign in
+          </button>
+          <button type="button" class="auth-tab" data-tab="register">
+            Create account
+          </button>
+        </div>
+
+        <form id="login-form" class="auth-form">
+          <label>
+            Phone number
+            <input
+              type="tel"
+              name="phone"
+              autocomplete="username"
+              placeholder="+14155550100"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              name="password"
+              autocomplete="current-password"
+              placeholder="8+ characters"
+              minlength="8"
+              required
+            />
+          </label>
+          <button type="submit" class="btn-primary">Sign in</button>
+        </form>
+
+        <form id="register-form" class="auth-form" hidden>
+          <label>
+            Name
+            <input type="text" name="displayName" placeholder="Your name" />
+          </label>
+          <label>
+            Phone number
+            <input
+              type="tel"
+              name="phone"
+              autocomplete="username"
+              placeholder="+14155550100"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              name="password"
+              autocomplete="new-password"
+              placeholder="Choose an 8+ character password"
+              minlength="8"
+              required
+            />
+          </label>
+          <button type="submit" class="btn-primary">Create account</button>
+          <p class="auth-hint">
+            New accounts need administrator approval before first use.
+          </p>
+        </form>
+
+        <p id="auth-message" class="auth-message" role="alert"></p>
+      </section>
+    </main>
+
+    <!-- ===== App shell ===== -->
+    <div id="app-shell" hidden>
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="logo">🛒</span>
+          <span class="topbar-title">Keepish</span>
+        </div>
+        <div class="topbar-search">
+          <input
+            id="search"
+            type="search"
+            placeholder="Search lists and items…"
+            aria-label="Search"
+          />
+        </div>
+        <div class="topbar-right">
+          <button id="nav-lists" class="nav-btn is-active" type="button">
+            Lists
+          </button>
+          <button id="nav-admin" class="nav-btn" type="button" hidden>
+            Admin
+          </button>
+          <span id="user-chip" class="user-chip" title=""></span>
+          <button id="logout-btn" class="nav-btn" type="button">Sign out</button>
+        </div>
+      </header>
+
+      <!-- Lists view -->
+      <main id="lists-view" class="content">
+        <section class="composer-wrap">
+          <form id="composer" class="composer">
+            <input
+              id="composer-title"
+              class="composer-title"
+              type="text"
+              placeholder="Create a shopping list…"
+              aria-label="List title"
+            />
+            <div id="composer-extra" class="composer-extra" hidden>
+              <ul id="composer-items" class="composer-items"></ul>
+              <input
+                id="composer-item-input"
+                class="composer-item-input"
+                type="text"
+                placeholder="+ Add item"
+                aria-label="Add item"
+              />
+              <div class="composer-actions">
+                <div
+                  id="composer-colors"
+                  class="color-row"
+                  role="group"
+                  aria-label="List colour"
+                ></div>
+                <button type="submit" class="btn-text">Create</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <section
+          id="lists-grid"
+          class="lists-grid"
+          aria-label="Your shopping lists"
+        ></section>
+        <p id="lists-empty" class="empty-state" hidden>
+          No lists yet — create your first shopping list above.
+        </p>
+      </main>
+
+      <!-- Admin view -->
+      <main id="admin-view" class="content" hidden>
+        <h2 class="section-title">User management</h2>
+        <p class="section-sub">
+          Approve or decline people requesting access to the app.
+        </p>
+        <div class="table-wrap">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
