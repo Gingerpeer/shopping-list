@@ -32,10 +32,10 @@ services:
       db:
         condition: service_healthy
     environment:
-      NODE_ENV: "production"
+      NODE_ENV: "development"
       PORT: "3000"
       # The app connects to the dedicated database service over the compose network.
-      DATABASE_URL: "******db:5432/shopping"
+      DATABASE_URL: "postgres://postgres:postgres@db:5432/shopping"
       # Override these for anything beyond local experimentation.
       JWT_SECRET: "${JWT_SECRET:-change-me-in-production}"
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-7d}"

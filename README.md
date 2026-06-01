@@ -101,7 +101,7 @@ The tests need a reachable PostgreSQL instance. Point them at one with
 ```bash
 # e.g. using the docker-compose database service
 docker compose up -d db
-TEST_DATABASE_URL=******localhost:5432/shopping npm test
+TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/shopping npm test
 ```
 
 ## API overview
@@ -169,7 +169,7 @@ To build and run only the application image (against your own database):
 ```bash
 docker build -t keepish .
 docker run --rm -p 3000:3000 \
-  -e DATABASE_URL=******host:5432/dbname \
+  -e DATABASE_URL=postgres://user:password@host:5432/dbname \
   -e JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))") \
   keepish
 ```

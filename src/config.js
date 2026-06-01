@@ -36,7 +36,7 @@ if (!jwtSecret) {
 // the box against a developer's local Postgres / docker-compose service.
 const databaseUrl =
   process.env.DATABASE_URL ||
-  '******localhost:5432/shopping';
+  'postgres://postgres:postgres@localhost:5432/shopping';
 
 if (!process.env.DATABASE_URL && isProduction) {
   throw new Error(

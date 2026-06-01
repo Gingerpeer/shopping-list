@@ -22,15 +22,15 @@ const COLORS = [
 
 const COLOR_VALUES = {
   default: '#ffffff',
-  red: '#faafa8',
-  orange: '#f39f76',
-  yellow: '#fff8b8',
-  green: '#e2f6d3',
-  teal: '#b4ddd3',
-  blue: '#d4e4ed',
-  purple: '#d3bfdb',
-  pink: '#f6e2dd',
-  gray: '#efeff1',
+  red: '#ffd8d2',
+  orange: '#ffdfbf',
+  yellow: '#fff4ba',
+  green: '#dff0d1',
+  teal: '#cce7e0',
+  blue: '#d9e8f2',
+  purple: '#e3dcf0',
+  pink: '#f6dce2',
+  gray: '#ecebea',
 };
 
 const state = {

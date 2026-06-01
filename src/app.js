@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
+const config = require('./config');
 const authRoutes = require('./routes/auth');
 const listRoutes = require('./routes/lists');
 const adminRoutes = require('./routes/admin');
@@ -18,6 +19,19 @@ const { ensureCsrfCookie, verifyCsrf } = require('./csrf');
 function createApp() {
   const app = express();
 
+  const cspDirectives = {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'"],
+    styleSrc: ["'self'"],
+    imgSrc: ["'self'", 'data:'],
+    connectSrc: ["'self'"],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    frameAncestors: ["'none'"],
+    upgradeInsecureRequests: config.isProduction ? [] : null,
+  };
+
   // Behind a reverse proxy (e.g. on a hosting platform) trust the first proxy
   // so secure cookies and rate-limiting see the real client IP.
   app.set('trust proxy', 1);
@@ -28,19 +42,10 @@ function createApp() {
   app.use(
     helmet({
       contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:'],
-          connectSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          baseUri: ["'self'"],
-          formAction: ["'self'"],
-          frameAncestors: ["'none'"],
-        },
+        directives: cspDirectives,
       },
       crossOriginEmbedderPolicy: false,
+      hsts: config.isProduction,
     })
   );
 

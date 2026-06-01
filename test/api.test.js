@@ -7,7 +7,7 @@ const assert = require('node:assert');
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ||
   process.env.DATABASE_URL ||
-  '******localhost:5432/shopping_test';
+  'postgres://postgres:postgres@localhost:5432/shopping_test';
 process.env.JWT_SECRET = 'test-secret-value';
 process.env.NODE_ENV = 'test';
 
